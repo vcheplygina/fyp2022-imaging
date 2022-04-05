@@ -13,6 +13,11 @@ from sklearn.metrics import accuracy_score #for measuring performance
 
 
 import groupXY_functions as util #custom-made functions with e.g. kNN classifier, you can also use sklearn
+from sklearn.neighbors import KNeighborsClassifier
+
+import pickle #for saving/loading trained classifiers
+
+
 
 file_data = 'data/example_ground_truth.csv'
 path_image = 'data/example_image'
@@ -39,35 +44,35 @@ features_perimeter = np.empty([num_images,1])
 features_perimeter[:] = np.nan
 
 #Loop through all images
-for i in np.arange(num_images):
+#for i in np.arange(num_images):
     
     # Define filenames related to this image
-    file_image = path_image + os.sep + image_id[i] + '.jpg'
-    file_mask = path_mask + os.sep + image_id[i] + '_segmentation.png'
+    #file_image = path_image + os.sep + image_id[i] + '.jpg'
+    #file_mask = path_mask + os.sep + image_id[i] + '_segmentation.png'
     
     # Read the images with these filenames
-    im = plt.imread(file_image)
-    mask = plt.imread(file_mask)
+    #im = plt.imread(file_image)
+    #mask = plt.imread(file_mask)
     
     # Measure features (custom made function)
-    a, p = util.measure_area_perimeter(mask)
+    #a, p = util.measure_area_perimeter(mask)
     
     # Store in the variables we created before
-    features_area[i,0] = a
-    features_perimeter[i,0] = p
+    #features_area[i,0] = a
+    #features_perimeter[i,0] = p
     
     ###### TODO - Here you should measure and store some other features
 
 
 
 # Store these features so you can reuse them later
-feature_data = {"id": image_id, 
-                "area": features_area.flatten(),
-                "perimeter": features_perimeter.flatten()
-                }
+#feature_data = {"id": image_id, 
+#                "area": features_area.flatten(),
+#                "perimeter": features_perimeter.flatten()
+#                }
 
-df_features = pd.DataFrame(feature_data)
-df_features.to_csv(file_features, index=False)    
+#df_features = pd.DataFrame(feature_data)
+#df_features.to_csv(file_features, index=False)    
  
     
  
@@ -78,10 +83,10 @@ features_area = np.array(df_features['area'])
 features_perimeter = np.array(df_features['perimeter'])
 
 # Display the features measured in a scatterplot
-axs = util.scatter_data(features_area, features_perimeter, is_melanoma)
-axs.set_xlabel('X1 = Area')
-axs.set_ylabel('X2 = Perimeter')
-axs.legend()
+#axs = util.scatter_data(features_area, features_perimeter, is_melanoma)
+#axs.set_xlabel('X1 = Area')
+#axs.set_ylabel('X2 = Perimeter')
+#axs.legend()
 
 
 
@@ -109,17 +114,33 @@ for train_index, test_val_index in kf.split(x, y):
     # split dataset into a train, validation and test dataset
     test_index, val_index = np.split(test_val_index, 2)
     
-    x_train, x_val, x_test = x[train_index], x[val_index], x[test_index]
+    x_train, x_val, x_test = x[train_index,:], x[val_index,:], x[test_index,:]
     y_train, y_val, y_test = y[train_index], y[val_index], y[test_index]
     
     # Train and test custom-made kNN classifier. In sklearn you would do this with three steps, fit(x_train, y_train), predict(x_val), predict(x_test)
-    y_pred_val, y_pred_test = util.knn_classifier(x_train, y_train, x_val, x_test, k)
+    #y_pred_val, y_pred_test = util.knn_classifier(x_train, y_train, x_val, x_test, k)  #Old version
+    classifier = KNeighborsClassifier(n_neighbors=5)
+    classifier.fit(x_train,y_train)
     
-    # Calculate accuracy
-    acc_val[index_fold] = accuracy_score(y_val,y_pred_val)
-    acc_test[index_fold] = accuracy_score(y_test,y_pred_test)
-   
+    y_pred_val = classifier.predict(x_val)
+    y_pred_test = classifier.predict(x_test)
+    
+    # Calculate some performance metric
+    acc_val[index_fold] = accuracy_score(y_val, y_pred_val)
     index_fold += 1
     
 print(acc_val)
-print(acc_test)
+
+#Let's say you now decided to use the 5-NN with al the features...
+classifier = KNeighborsClassifier(n_neighbors = 5)
+
+#It will be tested on external data, so we can try to maximize the use of our available data by training on 
+#all of x and y
+classifier = classifier.fit(x,y)
+
+#This is the classifier you need to save using pickle, add this to your zip file submission
+filename = 'groupXY_classifier.sav'
+pickle.dump(classifier, open(filename, 'wb'))
+
+
+
